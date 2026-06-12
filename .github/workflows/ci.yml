@@ -43,14 +43,15 @@ jobs:
 
       - name: Run migrations
         env:
-          DATABASE_URL: postgresql://vayno:vayno@localhost:5432/vayno_test?serverVersion=16&charset=utf8
+          # dbname_suffix adds "_test" in test env → vayno + _test = vayno_test
+          DATABASE_URL: postgresql://vayno:vayno@localhost:5432/vayno?serverVersion=16&charset=utf8
           APP_SECRET: ci-test-secret-key-min-32-chars-long
           ALLOW_OWNER_REGISTRATION: 'true'
         run: php bin/console doctrine:migrations:migrate --no-interaction --env=test
 
       - name: Run tests
         env:
-          DATABASE_URL: postgresql://vayno:vayno@localhost:5432/vayno_test?serverVersion=16&charset=utf8
+          DATABASE_URL: postgresql://vayno:vayno@localhost:5432/vayno?serverVersion=16&charset=utf8
           APP_SECRET: ci-test-secret-key-min-32-chars-long
           ALLOW_OWNER_REGISTRATION: 'true'
           CORS_ORIGINS: http://localhost:3000
