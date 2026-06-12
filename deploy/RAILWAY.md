@@ -66,6 +66,7 @@ Ese error casi siempre significa que `DATABASE_URL` **no apunta a PostgreSQL**.
 |---------|--------|
 | `ExceptionConverter.php` (MySQL) | `DATABASE_URL` usa `mysql://` |
 | `could not find driver` | La imagen solo tiene `pdo_pgsql`, no `pdo_mysql` |
+| `Invalid platform version ""` | `DATABASE_URL` sin versión; la app usa `server_version: 16` en Doctrine |
 
 **Fix en Railway (servicio API → Variables):**
 
@@ -75,6 +76,8 @@ Ese error casi siempre significa que `DATABASE_URL` **no apunta a PostgreSQL**.
 4. El nombre del servicio en la referencia debe coincidir, ej. `${{Postgres.DATABASE_URL}}` si el servicio se llama "Postgres"
 
 La URL correcta empieza por `postgresql://` (Railway la genera sola al usar la referencia).
+
+Railway no incluye `serverVersion` en la URL; la app lo fija en `doctrine.yaml` (`server_version: '16'`). No hace falta añadirlo a mano en Variables.
 
 Tras guardar, redeploy. En logs deberías ver migraciones OK, no el error de driver.
 
