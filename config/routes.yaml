@@ -1,0 +1,2 @@
+api_v1:
+    resource: routes/api_v1.yaml

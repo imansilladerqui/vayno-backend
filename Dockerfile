@@ -1,0 +1,27 @@
+FROM composer:2 AS vendor
+
+WORKDIR /app
+COPY composer.json composer.lock* symfony.lock* ./
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+
+FROM php:8.3-cli-alpine
+
+RUN apk add --no-cache postgresql-dev icu-dev libzip-dev \
+    && docker-php-ext-install pdo_pgsql intl opcache
+
+WORKDIR /app
+
+COPY --from=vendor /app/vendor ./vendor
+COPY . .
+
+RUN mkdir -p var/cache var/log && chmod -R 777 var
+
+ENV APP_ENV=prod
+ENV APP_DEBUG=0
+
+EXPOSE 8000
+
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

@@ -1,0 +1,7 @@
+var/
+vendor/
+.git/
+.env.local
+.env.*.local
+.phpunit.cache
+tests/

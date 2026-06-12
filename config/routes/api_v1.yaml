@@ -1,0 +1,39 @@
+api_v1_auth:
+    resource: ../../src/Controller/Api/V1/AuthController.php
+    type: attribute
+    prefix: /api/v1
+
+api_v1_users:
+    resource: ../../src/Controller/Api/V1/UserController.php
+    type: attribute
+    prefix: /api/v1
+
+api_v1_lots:
+    resource: ../../src/Controller/Api/V1/ParkingLotController.php
+    type: attribute
+    prefix: /api/v1
+
+api_v1_slots:
+    resource: ../../src/Controller/Api/V1/ParkingSlotController.php
+    type: attribute
+    prefix: /api/v1
+
+api_v1_availability:
+    resource: ../../src/Controller/Api/V1/AvailabilityController.php
+    type: attribute
+    prefix: /api/v1
+
+api_v1_reservations:
+    resource: ../../src/Controller/Api/V1/ReservationController.php
+    type: attribute
+    prefix: /api/v1
+
+api_v1_checkins:
+    resource: ../../src/Controller/Api/V1/CheckInController.php
+    type: attribute
+    prefix: /api/v1
+
+api_v1_owner:
+    resource: ../../src/Controller/Api/V1/OwnerReservationController.php
+    type: attribute
+    prefix: /api/v1

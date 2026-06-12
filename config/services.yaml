@@ -1,0 +1,34 @@
+parameters:
+    app.access_token_expire_minutes: '%env(int:ACCESS_TOKEN_EXPIRE_MINUTES)%'
+    app.refresh_token_expire_days: '%env(int:REFRESH_TOKEN_EXPIRE_DAYS)%'
+    app.reservation_grace_minutes: '%env(int:RESERVATION_GRACE_MINUTES)%'
+    app.cors_origins: '%env(CORS_ORIGINS)%'
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+
+    App\Security\JwtService:
+        arguments:
+            $secret: '%env(APP_SECRET)%'
+            $accessTokenExpireMinutes: '%app.access_token_expire_minutes%'
+            $refreshTokenExpireDays: '%app.refresh_token_expire_days%'
+
+    App\Service\CheckInService:
+        arguments:
+            $graceMinutes: '%app.reservation_grace_minutes%'
+
+    App\Service\ReservationExpiryService:
+        arguments:
+            $graceMinutes: '%app.reservation_grace_minutes%'
+
+    App\EventListener\ApiExceptionListener:
+        tags:
+            - { name: kernel.event_listener, event: kernel.exception, priority: 10 }

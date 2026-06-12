@@ -1,0 +1,16 @@
+framework:
+    messenger:
+        failure_transport: failed
+
+        transports:
+            failed: 'doctrine://default?queue_name=failed'
+            async: '%env(MESSENGER_TRANSPORT_DSN)%'
+
+        routing:
+            'App\Message\ExpireReservationsMessage': async
+
+when@dev:
+    framework:
+        messenger:
+            routing:
+                'App\Message\ExpireReservationsMessage': sync
