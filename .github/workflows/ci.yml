@@ -35,6 +35,9 @@ jobs:
           extensions: pdo_pgsql, intl
           coverage: none
 
+      - name: Prepare environment
+        run: cp .env.example .env
+
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
 
