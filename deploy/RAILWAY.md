@@ -116,7 +116,119 @@ NEXT_PUBLIC_API_URL=https://vayno-api-production.up.railway.app/api/v1
 
 ---
 
-## Uso de Railway (paso a paso)
+## Guía paso a paso (desde cero)
+
+Tu dominio actual: **https://api-vayno.up.railway.app**
+
+### Paso 1 — Proyecto en Railway
+
+1. Entra en [railway.com](https://railway.com) → **New Project**
+2. Nombre sugerido: `vayno`
+
+### Paso 2 — PostgreSQL
+
+1. En el proyecto → **+ New** → **Database** → **Add PostgreSQL**
+2. Espera a que el servicio esté **Active** (icono verde)
+3. Anota el **nombre del servicio** (ej. `Postgres`, `PostgreSQL`) — lo necesitas para la referencia de `DATABASE_URL`
+
+### Paso 3 — API desde GitHub
+
+1. **+ New** → **GitHub Repo** → elige `imansilladerqui/vayno-backend`
+2. Railway crea un servicio (ej. `vayno-backend`)
+3. En ese servicio → **Settings**:
+   - **Branch**: `main`
+   - **Root Directory**: `/` (vacío)
+   - **Builder**: Dockerfile (detectado automáticamente vía `railway.json`)
+
+### Paso 4 — Variables del servicio API
+
+Click en el servicio **API** (no Postgres) → pestaña **Variables**.
+
+**Primero** añade `DATABASE_URL` con referencia (no la escribas a mano):
+
+1. **+ New Variable** → **Add Reference**
+2. Service: tu PostgreSQL (ej. `Postgres`)
+3. Variable: `DATABASE_URL`
+4. Guardar → debe verse `${{Postgres.DATABASE_URL}}` (ajusta el nombre si tu servicio se llama distinto)
+
+**Después** añade el resto (Raw Editor o una a una):
+
+```env
+APP_ENV=prod
+APP_DEBUG=0
+APP_SECRET=<pega aquí: openssl rand -hex 32>
+CORS_ORIGINS=http://localhost:3000
+ENABLE_API_DOCS=true
+ALLOW_OWNER_REGISTRATION=false
+```
+
+Opcionales (ya tienen default en prod si no los pones):
+
+```env
+ACCESS_TOKEN_EXPIRE_MINUTES=15
+REFRESH_TOKEN_EXPIRE_DAYS=7
+RESERVATION_GRACE_MINUTES=15
+```
+
+| Variable | Obligatoria | Notas |
+|----------|-------------|-------|
+| `DATABASE_URL` | Sí | **Solo** vía Add Reference → PostgreSQL |
+| `APP_SECRET` | Sí | ≥ 32 caracteres, único, no el de local |
+| `APP_ENV` | Sí | `prod` |
+| `APP_DEBUG` | Sí | `0` |
+| `CORS_ORIGINS` | Sí | Dominio(s) del CRM, separados por coma |
+| `ENABLE_API_DOCS` | No | `true` para Swagger en `/api/doc` |
+
+**No pongas** `mysql://`, `127.0.0.1` ni copies `DATABASE_URL` de `.env.local`.
+
+### Paso 5 — Dominio público
+
+1. Servicio **API** → **Settings** → **Networking**
+2. **Generate Domain** (si no lo tienes ya)
+3. Debería quedar: `api-vayno.up.railway.app`
+
+### Paso 6 — Deploy
+
+1. Servicio API → **Deployments** → **Deploy** (o push a `main` en GitHub)
+2. Abre el deploy activo → **View logs**
+3. Busca estas líneas (significa que todo OK):
+
+```
+=== Vayno API startup ===
+DATABASE_URL scheme: OK (postgresql)
+Running migrations...
+Migrations OK. Starting PHP server on 0.0.0.0:XXXX...
+```
+
+Si ves `ERROR:` en logs, el contenedor muere → Railway muestra **502 Application failed to respond**.
+
+### Paso 7 — Probar
+
+```bash
+# Swagger (con ENABLE_API_DOCS=true)
+curl -I https://api-vayno.up.railway.app/api/doc
+
+# API viva (login devuelve 401 o error de validación, no 502)
+curl -X POST https://api-vayno.up.railway.app/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"test@test.com","password":"password12345"}'
+```
+
+Respuesta buena del login (aunque el usuario no exista): JSON con error de credenciales o validación, **no** HTML de Railway 502.
+
+### Paso 8 — CRM
+
+En tu frontend (Vercel/local):
+
+```env
+NEXT_PUBLIC_API_URL=https://api-vayno.up.railway.app/api/v1
+```
+
+Y en Railway `CORS_ORIGINS` incluye el dominio del CRM (ej. `https://tu-app.vercel.app`).
+
+---
+
+## Uso de Railway (referencia rápida)
 
 ### 1. Proyecto y servicios
 
