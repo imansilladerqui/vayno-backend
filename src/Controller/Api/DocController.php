@@ -10,14 +10,14 @@ final class DocController
 {
     public function __construct(
         private readonly string $projectDir,
-        private readonly string $kernelEnvironment,
+        private readonly bool $apiDocsEnabled,
     ) {
     }
 
     #[Route('/api/doc', name: 'api_doc', methods: ['GET'])]
     public function index(): Response
     {
-        $this->denyInProduction();
+        $this->denyIfDisabled();
 
         return new Response($this->swaggerHtml(), Response::HTTP_OK, ['Content-Type' => 'text/html']);
     }
@@ -25,7 +25,7 @@ final class DocController
     #[Route('/api/doc/openapi.yaml', name: 'api_doc_openapi', methods: ['GET'])]
     public function openapi(): Response
     {
-        $this->denyInProduction();
+        $this->denyIfDisabled();
 
         $path = $this->projectDir.'/config/openapi.yaml';
         if (!is_readable($path)) {
@@ -37,9 +37,9 @@ final class DocController
         ]);
     }
 
-    private function denyInProduction(): void
+    private function denyIfDisabled(): void
     {
-        if ($this->kernelEnvironment === 'prod') {
+        if (!$this->apiDocsEnabled) {
             throw new NotFoundHttpException();
         }
     }

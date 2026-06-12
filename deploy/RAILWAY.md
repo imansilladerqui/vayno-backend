@@ -45,9 +45,12 @@ REFRESH_TOKEN_EXPIRE_DAYS=7
 RESERVATION_GRACE_MINUTES=15
 CORS_ORIGINS=https://tu-crm.vercel.app
 ALLOW_OWNER_REGISTRATION=false
+ENABLE_API_DOCS=true
 ```
 
 `ALLOW_OWNER_REGISTRATION=false` en producción (default). Pon `true` solo si necesitas registrar owners desde la API en el POC.
+
+`ENABLE_API_DOCS=true` expone Swagger en `/api/doc`. Déjalo en `false` cuando la API sea pública de verdad.
 
 `${{Postgres.DATABASE_URL}}` es una referencia interna al servicio Postgres del mismo proyecto.
 
@@ -138,7 +141,7 @@ railway run php bin/console app:expire-reservations
 - [ ] `CORS_ORIGINS` apunta al dominio real del CRM
 - [ ] `APP_SECRET` es único y ≥ 32 caracteres
 - [ ] CRM tiene `NEXT_PUBLIC_API_URL` con el dominio de Railway
-- [ ] Docs solo en dev (`/api/doc` devuelve 404 en prod)
+- [ ] `ENABLE_API_DOCS=true` si quieres Swagger en `https://TU-DOMINIO/api/doc`
 
 ## Créditos
 

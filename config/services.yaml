@@ -6,14 +6,17 @@ parameters:
 when@dev:
     parameters:
         env(ALLOW_OWNER_REGISTRATION): 'true'
+        env(ENABLE_API_DOCS): 'true'
 
 when@test:
     parameters:
         env(ALLOW_OWNER_REGISTRATION): 'true'
+        env(ENABLE_API_DOCS): 'false'
 
 when@prod:
     parameters:
         env(ALLOW_OWNER_REGISTRATION): 'false'
+        env(ENABLE_API_DOCS): 'false'
 
 services:
     _defaults:
@@ -21,6 +24,7 @@ services:
         autoconfigure: true
         bind:
             $allowOwnerRegistration: '%env(bool:ALLOW_OWNER_REGISTRATION)%'
+            $apiDocsEnabled: '%env(bool:ENABLE_API_DOCS)%'
             $debug: '%kernel.debug%'
             $kernelEnvironment: '%kernel.environment%'
             $projectDir: '%kernel.project_dir%'

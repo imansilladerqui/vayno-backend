@@ -11,7 +11,7 @@ docker compose up --build
 
 API: `http://localhost:8000/api/v1`
 
-Docs (dev only): `http://localhost:8000/api/doc`
+Docs: `http://localhost:8000/api/doc` (set `ENABLE_API_DOCS=true`; disabled in prod by default)
 
 ## Tests
 
