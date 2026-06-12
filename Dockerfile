@@ -16,7 +16,8 @@ COPY --from=vendor /app/vendor ./vendor
 COPY . .
 
 RUN mkdir -p var/cache var/log && chmod -R 775 var \
-    && printf 'APP_ENV=prod\n' > .env
+    && printf 'APP_ENV=prod\n' > .env \
+    && chmod +x docker/railway-start.sh
 
 ENV APP_ENV=prod
 ENV APP_DEBUG=0

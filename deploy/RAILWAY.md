@@ -58,6 +58,28 @@ ENABLE_API_DOCS=true
 
 ---
 
+## Troubleshooting: `could not find driver`
+
+Ese error casi siempre significa que `DATABASE_URL` **no apunta a PostgreSQL**.
+
+| Síntoma | Causa |
+|---------|--------|
+| `ExceptionConverter.php` (MySQL) | `DATABASE_URL` usa `mysql://` |
+| `could not find driver` | La imagen solo tiene `pdo_pgsql`, no `pdo_mysql` |
+
+**Fix en Railway (servicio API → Variables):**
+
+1. Borra cualquier `DATABASE_URL` manual con `mysql://` o `127.0.0.1`
+2. Click **Add Reference** → elige tu servicio **PostgreSQL** (no MySQL)
+3. Variable: `DATABASE_URL`
+4. El nombre del servicio en la referencia debe coincidir, ej. `${{Postgres.DATABASE_URL}}` si el servicio se llama "Postgres"
+
+La URL correcta empieza por `postgresql://` (Railway la genera sola al usar la referencia).
+
+Tras guardar, redeploy. En logs deberías ver migraciones OK, no el error de driver.
+
+---
+
 ## CORS: local vs producción
 
 La API lee `CORS_ORIGINS` (lista separada por comas). El navegador solo permite peticiones desde esos orígenes.
