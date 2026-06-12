@@ -1,0 +1,826 @@
+openapi: 3.0.3
+info:
+  title: Vayno API
+  description: Parking reservation platform REST API.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development
+
+tags:
+  - name: Health
+  - name: Auth
+  - name: Users
+  - name: Lots
+  - name: Slots
+  - name: Availability
+  - name: Reservations
+  - name: Check-in
+  - name: Owner
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        detail:
+          type: string
+      example:
+        detail: Not authenticated
+
+    Health:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        api:
+          type: string
+          example: v1
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        full_name:
+          type: string
+        role:
+          type: string
+          enum: [OWNER, RENTER, BOTH]
+        created_at:
+          type: string
+          format: date-time
+
+    TokenPair:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+
+    ParkingLot:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        owner_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        address:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        is_active:
+          type: boolean
+
+    ParkingSlot:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        lot_id:
+          type: string
+          format: uuid
+        slot_number:
+          type: string
+        slot_type:
+          type: string
+          enum: [STANDARD, EV, HANDICAP, MOTORCYCLE]
+        price_per_hour:
+          type: number
+        is_active:
+          type: boolean
+
+    SlotAvailability:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slot_id:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+          nullable: true
+        start_time:
+          type: string
+          example: "09:00:00"
+        end_time:
+          type: string
+          example: "18:00:00"
+        is_recurring:
+          type: boolean
+        weekday:
+          type: integer
+          minimum: 0
+          maximum: 6
+          nullable: true
+
+    AvailableSlot:
+      type: object
+      properties:
+        slot_id:
+          type: string
+          format: uuid
+        lot_id:
+          type: string
+          format: uuid
+        lot_name:
+          type: string
+        address:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        slot_number:
+          type: string
+        slot_type:
+          type: string
+          enum: [STANDARD, EV, HANDICAP, MOTORCYCLE]
+        price_per_hour:
+          type: number
+
+    Reservation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slot_id:
+          type: string
+          format: uuid
+        renter_id:
+          type: string
+          format: uuid
+        start_dt:
+          type: string
+          format: date-time
+        end_dt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, ACTIVE, COMPLETED, CANCELLED, EXPIRED]
+        total_price:
+          type: number
+          nullable: true
+        qr_code:
+          type: string
+
+    OwnerReservation:
+      allOf:
+        - $ref: '#/components/schemas/Reservation'
+        - type: object
+          properties:
+            renter_email:
+              type: string
+            renter_full_name:
+              type: string
+            lot_name:
+              type: string
+            slot_number:
+              type: string
+
+    Receipt:
+      type: object
+      properties:
+        reservation_id:
+          type: string
+          format: uuid
+        slot_id:
+          type: string
+          format: uuid
+        start_dt:
+          type: string
+          format: date-time
+        end_dt:
+          type: string
+          format: date-time
+        check_in_at:
+          type: string
+          format: date-time
+        check_out_at:
+          type: string
+          format: date-time
+        duration_hours:
+          type: number
+        total_price:
+          type: number
+
+paths:
+  /:
+    get:
+      tags: [Health]
+      summary: API health check
+      security: []
+      responses:
+        '200':
+          description: API is running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register renter
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, full_name]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                full_name:
+                  type: string
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /auth/register-owner:
+    post:
+      tags: [Auth]
+      summary: Register parking owner
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, full_name]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+                full_name:
+                  type: string
+      responses:
+        '201':
+          description: Owner created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: JWT tokens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: New access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Current user profile
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+    patch:
+      tags: [Users]
+      summary: Update current user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                full_name:
+                  type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /lots:
+    get:
+      tags: [Lots]
+      summary: List owner lots
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ParkingLot'
+    post:
+      tags: [Lots]
+      summary: Create parking lot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, address, lat, lng]
+              properties:
+                name:
+                  type: string
+                address:
+                  type: string
+                lat:
+                  type: number
+                lng:
+                  type: number
+                is_active:
+                  type: boolean
+                  default: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParkingLot'
+
+  /lots/{lotId}:
+    parameters:
+      - name: lotId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Lots]
+      summary: Get lot
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParkingLot'
+    patch:
+      tags: [Lots]
+      summary: Update lot
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                address:
+                  type: string
+                lat:
+                  type: number
+                lng:
+                  type: number
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParkingLot'
+    delete:
+      tags: [Lots]
+      summary: Delete lot
+      responses:
+        '204':
+          description: Deleted
+
+  /lots/{lotId}/slots:
+    parameters:
+      - name: lotId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Slots]
+      summary: List slots in lot
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ParkingSlot'
+    post:
+      tags: [Slots]
+      summary: Create slot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slot_number, slot_type, price_per_hour]
+              properties:
+                slot_number:
+                  type: string
+                slot_type:
+                  type: string
+                  enum: [STANDARD, EV, HANDICAP, MOTORCYCLE]
+                price_per_hour:
+                  type: number
+                is_active:
+                  type: boolean
+                  default: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParkingSlot'
+
+  /slots/{slotId}:
+    parameters:
+      - name: slotId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      tags: [Slots]
+      summary: Update slot
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                slot_number:
+                  type: string
+                slot_type:
+                  type: string
+                price_per_hour:
+                  type: number
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParkingSlot'
+    delete:
+      tags: [Slots]
+      summary: Delete slot
+      responses:
+        '204':
+          description: Deleted
+
+  /slots/{slotId}/availability:
+    parameters:
+      - name: slotId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Availability]
+      summary: List availability windows
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SlotAvailability'
+    post:
+      tags: [Availability]
+      summary: Add availability window
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [start_time, end_time]
+              properties:
+                date:
+                  type: string
+                  format: date
+                  description: Required if not recurring
+                start_time:
+                  type: string
+                  example: "09:00"
+                end_time:
+                  type: string
+                  example: "18:00"
+                is_recurring:
+                  type: boolean
+                  default: false
+                weekday:
+                  type: integer
+                  description: 0=Sunday … 6=Saturday, required if recurring
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlotAvailability'
+
+  /availability/{availabilityId}:
+    parameters:
+      - name: availabilityId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [Availability]
+      summary: Delete availability window
+      responses:
+        '204':
+          description: Deleted
+
+  /slots/available:
+    get:
+      tags: [Reservations]
+      summary: Search available slots
+      security: []
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: start_dt
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "10:00:00"
+        - name: end_dt
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "12:00:00"
+        - name: lat
+          in: query
+          schema:
+            type: number
+        - name: lng
+          in: query
+          schema:
+            type: number
+        - name: radius_km
+          in: query
+          schema:
+            type: number
+            default: 10
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AvailableSlot'
+
+  /reservations:
+    get:
+      tags: [Reservations]
+      summary: List my reservations (renter)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reservation'
+    post:
+      tags: [Reservations]
+      summary: Create reservation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slot_id, start_dt, end_dt]
+              properties:
+                slot_id:
+                  type: string
+                  format: uuid
+                start_dt:
+                  type: string
+                  format: date-time
+                end_dt:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+
+  /reservations/{reservationId}:
+    parameters:
+      - name: reservationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Reservations]
+      summary: Get reservation
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+
+  /reservations/{reservationId}/cancel:
+    parameters:
+      - name: reservationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [Reservations]
+      summary: Cancel reservation
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+
+  /reservations/{reservationId}/checkin:
+    parameters:
+      - name: reservationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [Check-in]
+      summary: Check in with QR code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [qr_code]
+              properties:
+                qr_code:
+                  type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+
+  /reservations/{reservationId}/checkout:
+    parameters:
+      - name: reservationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [Check-in]
+      summary: Check out and get receipt
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receipt'
+
+  /owner/reservations:
+    get:
+      tags: [Owner]
+      summary: List reservations for owner lots
+      parameters:
+        - name: lot_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OwnerReservation'
+
+  /owner/reservations/{reservationId}:
+    parameters:
+      - name: reservationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Owner]
+      summary: Get reservation detail (owner view)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerReservation'
+
+security:
+  - bearerAuth: []

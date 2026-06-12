@@ -2,9 +2,10 @@ FROM composer:2 AS vendor
 
 WORKDIR /app
 COPY composer.json composer.lock* symfony.lock* ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts \
+    --ignore-platform-req=ext-pdo_pgsql
 
-FROM php:8.3-cli-alpine
+FROM php:8.4-cli-alpine
 
 RUN apk add --no-cache postgresql-dev icu-dev libzip-dev \
     && docker-php-ext-install pdo_pgsql intl opcache
@@ -14,7 +15,8 @@ WORKDIR /app
 COPY --from=vendor /app/vendor ./vendor
 COPY . .
 
-RUN mkdir -p var/cache var/log && chmod -R 777 var
+RUN mkdir -p var/cache var/log && chmod -R 775 var \
+    && printf 'APP_ENV=prod\n' > .env
 
 ENV APP_ENV=prod
 ENV APP_DEBUG=0

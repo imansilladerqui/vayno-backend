@@ -2,82 +2,153 @@
 
 ## Arquitectura
 
-- **Servicio API**: build desde `Dockerfile` (o repo GitHub)
-- **PostgreSQL**: plantilla managed de Railway
-- **CI**: GitHub Actions valida tests; Railway despliega automáticamente al pushear a `main`
-
-## Pasos (una sola vez)
-
-### 1. Subir el repo a GitHub
-
-```bash
-git init
-git add .
-git commit -m "feat: Symfony Vayno API"
-git remote add origin git@github.com:TU_USUARIO/vayno-backend.git
-git push -u origin main
+```
+GitHub (push main) → Railway build (Dockerfile) → API + Postgres
+CRM (Vercel/local) → HTTPS → Railway API (/api/v1)
 ```
 
-### 2. Crear proyecto en Railway
+- **API**: build desde `Dockerfile`, `railway.json` define el start command
+- **PostgreSQL**: servicio managed de Railway
+- **Secrets**: solo en Railway Variables (nunca en el repo)
 
-1. [railway.com](https://railway.com) → New Project
-2. **Add PostgreSQL** (`+ New` → `Database` → `PostgreSQL`)
-3. **Add GitHub Repo** → seleccionar `vayno-backend`
-4. Railway detecta el `Dockerfile` y `railway.json`
+---
 
-### 3. Variables del servicio API
+## Variables por entorno
 
-En el servicio API → Variables:
+| Dónde | Archivo / sitio | Qué guardar |
+|-------|-----------------|-------------|
+| **Local** | `.env.local` (gitignored) | Todo: secretos, DB, CORS local |
+| **Repo** | `.env.example` | Plantilla sin secretos reales |
+| **Railway** | Service → Variables | Secretos y config de producción |
+
+No uses `.env` ni `.env.dist` en el repo. Symfony necesita un `.env` mínimo para arrancar; Docker lo crea solo (`APP_ENV=prod` en la imagen, `APP_ENV=dev` en compose).
+
+### Local
+
+```bash
+cp .env.example .env.local
+# Edita .env.local con tu APP_SECRET, CORS_ORIGINS, etc.
+docker compose up --build
+```
+
+### Railway (producción)
+
+En el servicio **API** → **Variables**:
 
 ```env
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 APP_ENV=prod
 APP_DEBUG=0
-APP_SECRET=<genera-un-secreto-largo>
+APP_SECRET=<openssl rand -base64 32>
 ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=7
 RESERVATION_GRACE_MINUTES=15
 CORS_ORIGINS=https://tu-crm.vercel.app
-MESSENGER_TRANSPORT_DSN=sync://
+ALLOW_OWNER_REGISTRATION=false
 ```
 
-Usa referencias internas `${{Postgres.DATABASE_URL}}`, no la URL pública.
+`ALLOW_OWNER_REGISTRATION=false` en producción (default). Pon `true` solo si necesitas registrar owners desde la API en el POC.
 
-### 4. Dominio público
+`${{Postgres.DATABASE_URL}}` es una referencia interna al servicio Postgres del mismo proyecto.
 
-Settings → Networking → Generate Domain.
+**Importante:** genera un `APP_SECRET` distinto al de local. Nunca reutilices el mismo secreto entre entornos.
 
-Ejemplo: `https://vayno-api-production.up.railway.app`
+---
 
-### 5. Actualizar el CRM
+## CORS: local vs producción
 
-En `vayno-crm`:
+La API lee `CORS_ORIGINS` (lista separada por comas). El navegador solo permite peticiones desde esos orígenes.
+
+| Entorno | `CORS_ORIGINS` | Quién llama |
+|---------|----------------|-------------|
+| Local | `http://localhost:3000` | CRM en `npm run dev` |
+| Producción | `https://tu-crm.vercel.app` | CRM deployado en Vercel |
+
+Varios orígenes (ej. local + preview de Vercel):
 
 ```env
+CORS_ORIGINS=http://localhost:3000,https://vayno-crm-git-main.vercel.app
+```
+
+**Reglas:**
+
+- Sin `*` — hay que listar cada dominio explícitamente
+- Debe coincidir el protocolo (`http` vs `https`) y el puerto
+- Tras cambiar `CORS_ORIGINS` en Railway, redeploy o restart del servicio
+
+En el CRM:
+
+```env
+# Local
+NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+
+# Producción
 NEXT_PUBLIC_API_URL=https://vayno-api-production.up.railway.app/api/v1
 ```
 
-## Deploy automático
+---
+
+## Uso de Railway (paso a paso)
+
+### 1. Proyecto y servicios
+
+1. [railway.com](https://railway.com) → **New Project**
+2. **Add PostgreSQL** (Database → PostgreSQL)
+3. **Deploy from GitHub** → repo `vayno-backend`
+4. Railway detecta `Dockerfile` + `railway.json`
+
+### 2. Variables
+
+1. Click en el servicio **API** (no Postgres)
+2. **Variables** → pegar las de arriba
+3. Para `DATABASE_URL`, usa el botón **Add reference** → Postgres → `DATABASE_URL`
+
+### 3. Dominio público
+
+1. Servicio API → **Settings** → **Networking**
+2. **Generate Domain** → ej. `vayno-api-production.up.railway.app`
+3. Prueba: `curl https://TU-DOMINIO.up.railway.app/api/v1`
+
+### 4. Deploy automático
 
 Cada `git push` a `main`:
 
-1. Railway hace build del `Dockerfile`
-2. Ejecuta migraciones (`railway.json` → `startCommand`)
-3. Arranca el servidor PHP en `$PORT`
+1. Build de la imagen Docker
+2. Migraciones (`railway.json` → `startCommand`)
+3. Servidor PHP en `$PORT`
 
-GitHub Actions corre tests en paralelo (no despliega).
+Logs en tiempo real: servicio API → **Deployments** → click en el deploy activo.
 
-## Créditos gratuitos
+### 5. Comandos en producción
 
-- Trial: ~$5 por 30 días (API + Postgres suele alcanzar)
-- Plan Free: ~$1/mes (muy justo; considera Hobby $5/mes para POC continuo)
-
-## Scheduler en Railway
-
-Para expirar reservas, añade un segundo servicio (opcional) con:
+Railway CLI (opcional):
 
 ```bash
-php bin/console messenger:consume scheduler_default
+npm i -g @railway/cli
+railway login
+railway link
+railway run php bin/console app:expire-reservations
 ```
 
-O ejecuta manualmente `php bin/console app:expire-reservations` vía cron externo.
+---
+
+## Checklist post-deploy
+
+- [ ] `curl https://TU-DOMINIO/api/v1` → `{"status":"ok","api":"v1"}`
+- [ ] `CORS_ORIGINS` apunta al dominio real del CRM
+- [ ] `APP_SECRET` es único y ≥ 32 caracteres
+- [ ] CRM tiene `NEXT_PUBLIC_API_URL` con el dominio de Railway
+- [ ] Docs solo en dev (`/api/doc` devuelve 404 en prod)
+
+## Créditos
+
+- Trial ~$5 / 30 días
+- Plan Free ~$1/mes (ajustado para POC)
+
+## Expirar reservas (opcional)
+
+```bash
+railway run php bin/console app:expire-reservations
+```
+
+O cron externo (cron-job.org) en el POC.

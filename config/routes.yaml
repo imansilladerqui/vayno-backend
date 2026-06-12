@@ -1,2 +1,6 @@
+api_doc:
+    resource: ../src/Controller/Api/DocController.php
+    type: attribute
+
 api_v1:
     resource: routes/api_v1.yaml

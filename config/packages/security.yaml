@@ -21,6 +21,8 @@ security:
                 - App\Security\JwtAuthenticator
 
     access_control:
+        - { path: ^/api/doc, roles: PUBLIC_ACCESS }
+        - { path: ^/api/v1/?$, roles: PUBLIC_ACCESS }
         - { path: ^/api/v1/auth/(register|register-owner|login|refresh)$, roles: PUBLIC_ACCESS }
         - { path: ^/api/v1/slots/available$, roles: PUBLIC_ACCESS }
         - { path: ^/api/v1, roles: IS_AUTHENTICATED_FULLY }

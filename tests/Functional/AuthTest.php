@@ -14,7 +14,7 @@ final class AuthTest extends WebTestCase
             'CONTENT_TYPE' => 'application/json',
         ], json_encode([
             'email' => 'owner@example.com',
-            'password' => 'password123',
+            'password' => 'password12345',
             'full_name' => 'Test Owner',
         ], JSON_THROW_ON_ERROR));
 
@@ -24,7 +24,7 @@ final class AuthTest extends WebTestCase
             'CONTENT_TYPE' => 'application/json',
         ], json_encode([
             'email' => 'owner@example.com',
-            'password' => 'password123',
+            'password' => 'password12345',
         ], JSON_THROW_ON_ERROR));
 
         $this->assertResponseIsSuccessful();

@@ -40,9 +40,6 @@ final class UserController
         if ($data->fullName !== null) {
             $user->setFullName($data->fullName);
         }
-        if ($data->role !== null) {
-            $user->setRole($data->role);
-        }
 
         $this->em->flush();
 

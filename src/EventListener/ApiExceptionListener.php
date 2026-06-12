@@ -8,10 +8,16 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Validator\Exception\ValidationFailedException;
 
 final class ApiExceptionListener
 {
+    public function __construct(
+        private readonly bool $debug,
+    ) {
+    }
+
     public function onKernelException(ExceptionEvent $event): void
     {
         $request = $event->getRequest();
@@ -65,6 +71,15 @@ final class ApiExceptionListener
             $event->setResponse(new JsonResponse(
                 ['detail' => $exception->getMessage() ?: Response::$statusTexts[$exception->getStatusCode()] ?? 'Error'],
                 $exception->getStatusCode()
+            ));
+
+            return;
+        }
+
+        if (!$this->debug) {
+            $event->setResponse(new JsonResponse(
+                ['detail' => 'Internal server error'],
+                Response::HTTP_INTERNAL_SERVER_ERROR
             ));
         }
     }

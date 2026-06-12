@@ -24,17 +24,38 @@ final class JwtAuthenticator extends AbstractAuthenticator
 
     public function supports(Request $request): ?bool
     {
-        return $request->headers->has('Authorization');
+        if (!$this->hasBearerToken($request)) {
+            return false;
+        }
+
+        if ($this->isPublicPath($request)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function hasBearerToken(Request $request): bool
+    {
+        $header = $request->headers->get('Authorization', '');
+
+        return str_starts_with($header, 'Bearer ') && trim(substr($header, 7)) !== '';
+    }
+
+    private function isPublicPath(Request $request): bool
+    {
+        $path = $request->getPathInfo();
+
+        return (bool) preg_match(
+            '#^/api/v1(?:/?|/auth/(?:register|register-owner|login|refresh)|/slots/available)$#',
+            $path
+        );
     }
 
     public function authenticate(Request $request): SelfValidatingPassport
     {
         $header = $request->headers->get('Authorization', '');
-        if (!str_starts_with($header, 'Bearer ')) {
-            throw new AuthenticationException('Invalid authorization header');
-        }
-
-        $token = substr($header, 7);
+        $token = trim(substr($header, 7));
 
         try {
             $payload = $this->jwtService->decode($token);
@@ -44,8 +65,19 @@ final class JwtAuthenticator extends AbstractAuthenticator
         }
 
         return new SelfValidatingPassport(
-            new UserBadge($userId, function (string $id): ?User {
-                return $this->userRepository->find(Uuid::fromString($id));
+            new UserBadge($userId, function (string $id) use ($payload): ?User {
+                $user = $this->userRepository->find(Uuid::fromString($id));
+                if (!$user) {
+                    return null;
+                }
+
+                try {
+                    $this->jwtService->verifyTokenVersion($payload, $user);
+                } catch (\Throwable) {
+                    return null;
+                }
+
+                return $user;
             })
         );
     }

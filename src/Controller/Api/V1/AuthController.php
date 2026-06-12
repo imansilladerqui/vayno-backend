@@ -11,6 +11,7 @@ use App\DTO\Response\TokenResponse;
 use App\DTO\Response\UserResponse;
 use App\Enum\UserRole;
 use App\Exception\ApiException;
+use App\Repository\UserRepository;
 use App\Security\JwtService;
 use App\Service\AuthService;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -28,8 +29,10 @@ final class AuthController
     public function __construct(
         private readonly AuthService $authService,
         private readonly JwtService $jwtService,
+        private readonly UserRepository $userRepository,
         private readonly RequestMapper $requestMapper,
         private readonly SerializerInterface $serializer,
+        private readonly bool $allowOwnerRegistration,
     ) {
     }
 
@@ -37,11 +40,7 @@ final class AuthController
     public function register(Request $request): JsonResponse
     {
         $data = $this->requestMapper->map($request, RegisterRequest::class);
-        try {
-            $user = $this->authService->register($data, UserRole::Renter);
-        } catch (ApiException $e) {
-            throw $e;
-        }
+        $user = $this->authService->register($data, UserRole::Renter);
 
         return $this->jsonResponse(UserResponse::fromEntity($user), Response::HTTP_CREATED, $this->serializer);
     }
@@ -49,6 +48,10 @@ final class AuthController
     #[Route('/register-owner', methods: ['POST'])]
     public function registerOwner(Request $request): JsonResponse
     {
+        if (!$this->allowOwnerRegistration) {
+            throw new ApiException('Owner registration is disabled', Response::HTTP_FORBIDDEN);
+        }
+
         $data = $this->requestMapper->map($request, RegisterRequest::class);
         $user = $this->authService->register($data, UserRole::Owner);
 
@@ -77,13 +80,20 @@ final class AuthController
         try {
             $payload = $this->jwtService->decode($data->refreshToken);
             $userId = $this->jwtService->verifyType($payload, 'refresh');
-            $accessToken = $this->jwtService->createAccessToken(Uuid::fromString($userId));
+            $user = $this->userRepository->find(Uuid::fromString($userId));
+            if (!$user) {
+                throw new \InvalidArgumentException('User not found');
+            }
+            $this->jwtService->verifyTokenVersion($payload, $user);
         } catch (\Throwable) {
             throw new ApiException('Invalid refresh token', Response::HTTP_UNAUTHORIZED);
         }
 
         return $this->jsonResponse(
-            new TokenResponse($accessToken, $data->refreshToken),
+            new TokenResponse(
+                $this->jwtService->createAccessToken($user),
+                $this->jwtService->createRefreshToken($user),
+            ),
             Response::HTTP_OK,
             $this->serializer
         );

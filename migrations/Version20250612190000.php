@@ -41,16 +41,10 @@ final class Version20250612190000 extends AbstractMigration
         $this->addSql('CREATE TABLE check_events (id UUID NOT NULL, reservation_id UUID NOT NULL, event_type VARCHAR(20) NOT NULL, timestamp TIMESTAMP(0) WITH TIME ZONE NOT NULL, notes VARCHAR(500) DEFAULT NULL, PRIMARY KEY (id))');
         $this->addSql('CREATE INDEX IDX_CHECK_EVENTS_RESERVATION ON check_events (reservation_id)');
         $this->addSql('ALTER TABLE check_events ADD CONSTRAINT FK_CHECK_EVENTS_RESERVATION FOREIGN KEY (reservation_id) REFERENCES reservations (id) ON DELETE CASCADE NOT DEFERRABLE INITIALLY IMMEDIATE');
-
-        $this->addSql('CREATE TABLE messenger_messages (id BIGSERIAL NOT NULL, body TEXT NOT NULL, headers TEXT NOT NULL, queue_name VARCHAR(190) NOT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, available_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, delivered_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL, PRIMARY KEY (id))');
-        $this->addSql('CREATE INDEX IDX_MESSENGER_QUEUE ON messenger_messages (queue_name)');
-        $this->addSql('CREATE INDEX IDX_MESSENGER_AVAILABLE ON messenger_messages (available_at)');
-        $this->addSql('CREATE INDEX IDX_MESSENGER_DELIVERED ON messenger_messages (delivered_at)');
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql('DROP TABLE messenger_messages');
         $this->addSql('DROP TABLE check_events');
         $this->addSql('DROP TABLE reservations');
         $this->addSql('DROP TABLE slot_availability');

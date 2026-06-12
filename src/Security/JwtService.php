@@ -2,6 +2,7 @@
 
 namespace App\Security;
 
+use App\Entity\User;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Symfony\Component\Uid\Uuid;
@@ -17,25 +18,23 @@ final class JwtService
     ) {
     }
 
-    public function createAccessToken(Uuid $userId): string
+    public function createAccessToken(User $user): string
     {
-        return $this->encode([
-            'sub' => (string) $userId,
+        return $this->encode($user, [
             'type' => 'access',
             'exp' => time() + ($this->accessTokenExpireMinutes * 60),
         ]);
     }
 
-    public function createRefreshToken(Uuid $userId): string
+    public function createRefreshToken(User $user): string
     {
-        return $this->encode([
-            'sub' => (string) $userId,
+        return $this->encode($user, [
             'type' => 'refresh',
             'exp' => time() + ($this->refreshTokenExpireDays * 86400),
         ]);
     }
 
-    /** @return array{sub: string, type: string} */
+    /** @return array{sub: string, type: string, ver: int} */
     public function decode(string $token): array
     {
         $payload = JWT::decode($token, new Key($this->secret, self::ALGORITHM));
@@ -43,6 +42,7 @@ final class JwtService
         return [
             'sub' => (string) $payload->sub,
             'type' => (string) $payload->type,
+            'ver' => (int) ($payload->ver ?? 0),
         ];
     }
 
@@ -60,9 +60,20 @@ final class JwtService
         return $subject;
     }
 
-    /** @param array<string, mixed> $payload */
-    private function encode(array $payload): string
+    public function verifyTokenVersion(array $payload, User $user): void
     {
-        return JWT::encode($payload, $this->secret, self::ALGORITHM);
+        if (($payload['ver'] ?? null) !== $user->getTokenVersion()) {
+            throw new \InvalidArgumentException('Token has been revoked');
+        }
+    }
+
+    /** @param array<string, mixed> $claims */
+    private function encode(User $user, array $claims): string
+    {
+        return JWT::encode([
+            'sub' => (string) $user->getId(),
+            'ver' => $user->getTokenVersion(),
+            ...$claims,
+        ], $this->secret, self::ALGORITHM);
     }
 }

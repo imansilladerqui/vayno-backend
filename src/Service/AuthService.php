@@ -25,7 +25,7 @@ final class AuthService
     public function register(RegisterRequest $data, UserRole $role): User
     {
         if ($this->userRepository->findOneBy(['email' => $data->email])) {
-            throw new ApiException('Email already registered');
+            throw new ApiException('Unable to register with the provided credentials', Response::HTTP_BAD_REQUEST);
         }
 
         $user = new User();
@@ -54,8 +54,8 @@ final class AuthService
     public function issueTokens(User $user): array
     {
         return [
-            'access' => $this->jwtService->createAccessToken($user->getId()),
-            'refresh' => $this->jwtService->createRefreshToken($user->getId()),
+            'access' => $this->jwtService->createAccessToken($user),
+            'refresh' => $this->jwtService->createRefreshToken($user),
         ];
     }
 }

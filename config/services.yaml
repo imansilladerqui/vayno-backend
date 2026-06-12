@@ -2,12 +2,28 @@ parameters:
     app.access_token_expire_minutes: '%env(int:ACCESS_TOKEN_EXPIRE_MINUTES)%'
     app.refresh_token_expire_days: '%env(int:REFRESH_TOKEN_EXPIRE_DAYS)%'
     app.reservation_grace_minutes: '%env(int:RESERVATION_GRACE_MINUTES)%'
-    app.cors_origins: '%env(CORS_ORIGINS)%'
+
+when@dev:
+    parameters:
+        env(ALLOW_OWNER_REGISTRATION): 'true'
+
+when@test:
+    parameters:
+        env(ALLOW_OWNER_REGISTRATION): 'true'
+
+when@prod:
+    parameters:
+        env(ALLOW_OWNER_REGISTRATION): 'false'
 
 services:
     _defaults:
         autowire: true
         autoconfigure: true
+        bind:
+            $allowOwnerRegistration: '%env(bool:ALLOW_OWNER_REGISTRATION)%'
+            $debug: '%kernel.debug%'
+            $kernelEnvironment: '%kernel.environment%'
+            $projectDir: '%kernel.project_dir%'
 
     App\:
         resource: '../src/'
@@ -28,6 +44,10 @@ services:
     App\Service\ReservationExpiryService:
         arguments:
             $graceMinutes: '%app.reservation_grace_minutes%'
+
+    App\EventListener\AuthRateLimitListener:
+        arguments:
+            $authLimiter: '@limiter.auth'
 
     App\EventListener\ApiExceptionListener:
         tags:

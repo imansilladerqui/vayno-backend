@@ -1,3 +1,8 @@
+api_v1_health:
+    resource: ../../src/Controller/Api/V1/HealthController.php
+    type: attribute
+    prefix: /api/v1
+
 api_v1_auth:
     resource: ../../src/Controller/Api/V1/AuthController.php
     type: attribute

@@ -34,6 +34,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'created_at')]
     private \DateTimeImmutable $createdAt;
 
+    #[ORM\Column(name: 'token_version', options: ['default' => 1])]
+    private int $tokenVersion = 1;
+
     /** @var Collection<int, ParkingLot> */
     #[ORM\OneToMany(targetEntity: ParkingLot::class, mappedBy: 'owner', orphanRemoval: true)]
     private Collection $parkingLots;
@@ -120,6 +123,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getTokenVersion(): int
+    {
+        return $this->tokenVersion;
+    }
+
+    public function incrementTokenVersion(): void
+    {
+        ++$this->tokenVersion;
     }
 
     public function isOwner(): bool
