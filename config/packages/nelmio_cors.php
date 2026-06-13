@@ -5,7 +5,7 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigura
 return static function (ContainerConfigurator $container): void {
     $origins = array_values(array_filter(array_map(
         trim(...),
-        explode(',', $_ENV['CORS_ORIGINS'] ?? $_SERVER['CORS_ORIGINS'] ?? 'http://localhost:3000'),
+        explode(',', $_ENV['CORS_ORIGINS'] ?? $_SERVER['CORS_ORIGINS'] ?? 'http://localhost:3000,https://vayno.vercel.app'),
     )));
 
     $container->extension('nelmio_cors', [
