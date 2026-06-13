@@ -5,7 +5,6 @@ Symfony REST API for the Vayno parking platform (`/api/v1`).
 ## Run
 
 ```bash
-cp .env.example .env.local
 docker compose up --build
 ```
 
