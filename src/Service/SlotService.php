@@ -42,15 +42,11 @@ final class SlotService
             ->getOneOrNullResult();
     }
 
-    public function validateAvailabilityOverlap(Uuid $slotId, SlotAvailabilityCreateRequest $data, ?Uuid $excludeId = null): void
+    public function validateAvailabilityOverlap(Uuid $slotId, SlotAvailabilityCreateRequest $data): void
     {
         $existing = $this->availabilityRepository->findBy(['slot' => $slotId]);
 
         foreach ($existing as $window) {
-            if ($excludeId && $window->getId()->equals($excludeId)) {
-                continue;
-            }
-
             if ($data->isRecurring && $window->isRecurring()) {
                 if ($data->weekday === $window->getWeekday() && $this->timesOverlap($data->startTime, $data->endTime, $window)) {
                     throw new \InvalidArgumentException('Availability window overlaps with existing recurring window');
@@ -173,9 +169,9 @@ final class SlotService
         return $window;
     }
 
-    private function hasReservationConflict(Uuid $slotId, \DateTimeImmutable $startDt, \DateTimeImmutable $endDt, ?Uuid $excludeId = null): bool
+    private function hasReservationConflict(Uuid $slotId, \DateTimeImmutable $startDt, \DateTimeImmutable $endDt): bool
     {
-        $qb = $this->reservationRepository->createQueryBuilder('r')
+        return $this->reservationRepository->createQueryBuilder('r')
             ->where('r.slot = :slotId')
             ->andWhere('r.status IN (:statuses)')
             ->andWhere('r.startDt < :endDt')
@@ -184,13 +180,9 @@ final class SlotService
             ->setParameter('statuses', self::ACTIVE_RESERVATION_STATUSES)
             ->setParameter('startDt', $startDt)
             ->setParameter('endDt', $endDt)
-            ->setMaxResults(1);
-
-        if ($excludeId) {
-            $qb->andWhere('r.id != :excludeId')->setParameter('excludeId', $excludeId);
-        }
-
-        return $qb->getQuery()->getOneOrNullResult() !== null;
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult() !== null;
     }
 
     private function slotCoversRequestedWindow(
